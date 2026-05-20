@@ -323,6 +323,8 @@ async def H(ctx):
     view = HelpView()
     await view.send(ctx)
 
+# ========== ВЕБ-СЕРВЕР ДЛЯ RENDER (НЕ ДАЁТ ЗАСНУТЬ) ==========
+
 async def health_check(request):
     return web.Response(text="Bot is alive!")
 
@@ -330,17 +332,15 @@ app = web.Application()
 app.router.add_get('/', health_check)
 
 async def run_web():
+    port = int(os.environ.get("PORT", 10000))
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
-    print("Web server started on port 8080")
-
-async def start_bot():
-    await bot.start(os.getenv("DISCORD_TOKEN"))
+    print(f"Web server started on port {port}")
 
 async def main():
-    await asyncio.gather(run_web(), start_bot())
+    await asyncio.gather(run_web(), bot.start(os.getenv("DISCORD_TOKEN")))
 
 if __name__ == "__main__":
     asyncio.run(main())
