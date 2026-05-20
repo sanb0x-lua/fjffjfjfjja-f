@@ -1,0 +1,9 @@
+.env
+*.pyc
+__pycache__/
+settings.json
+*.db
+*.sqlite
+assets/bg.png
+.DS_Store
+*.log
