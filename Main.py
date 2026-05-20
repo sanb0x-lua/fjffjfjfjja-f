@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 from PIL import Image, ImageDraw, ImageFont
 import io
 import os
-import json
 import asyncpg
 import asyncio
+from aiohttp import web
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -21,7 +21,7 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix="S!", intents=intents)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/db")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 messages_cache = defaultdict(list)
 logs_cache = defaultdict(list)
@@ -140,11 +140,6 @@ async def load_cache():
         logs = await db.get_logs(guild.id, 500)
         logs_cache[guild.id] = [dict(m) for m in logs]
 
-async def keep_alive():
-    while True:
-        await asyncio.sleep(240)
-        await bot.change_presence(activity=discord.Game(name="S!H | 24/7"))
-
 @bot.event
 async def on_ready():
     await db.connect()
@@ -152,7 +147,6 @@ async def on_ready():
     print(f'Bot ready: {bot.user}')
     if not os.path.exists("assets"):
         os.makedirs("assets")
-    bot.loop.create_task(keep_alive())
 
 @bot.event
 async def on_message(message):
@@ -329,4 +323,24 @@ async def H(ctx):
     view = HelpView()
     await view.send(ctx)
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+async def health_check(request):
+    return web.Response(text="Bot is alive!")
+
+app = web.Application()
+app.router.add_get('/', health_check)
+
+async def run_web():
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
+    print("Web server started on port 8080")
+
+async def start_bot():
+    await bot.start(os.getenv("DISCORD_TOKEN"))
+
+async def main():
+    await asyncio.gather(run_web(), start_bot())
+
+if __name__ == "__main__":
+    asyncio.run(main())
